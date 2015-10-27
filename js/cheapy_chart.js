@@ -15,8 +15,13 @@
         },
         tooltip: {
             show: true,
+            lineStyle: {
+                color: '#48b',
+                width: 1,
+                type: 'solid'
+            },
             formatter: function(param){
-
+                return "Hello Cheaphy!"
             },
             position: function(arr){
                 return arr;
@@ -97,6 +102,8 @@
             weight: "normal"
         },
         base:{
+            upColor: "#c12e34",
+            downColor: "#68a54a",
             backgroundColor: "#fff",
             color: "#000",
             markStyle: {
@@ -138,10 +145,18 @@
         this.renderTitle();
         this.renderAxis();
         this.renderSeries();
-        this.renderOther();
         this._bindEvent();
         this._startTick();
     };
+    CheapyChart.prototype.renderAgain = function(beforeRender){
+        this._clear();
+        this.renderTitle();
+        this.renderAxis();
+        this.renderSeries();
+        beforeRender && beforeRender();
+        this._startTick(true);
+    }
+
     CheapyChart.prototype.initCanvas = function(){
         var width = this.width,
             height = this.height,
@@ -162,7 +177,7 @@
         for(i = 0; i < list.length; i++){
             item = list[i];
             type = item.type;
-            if(type && item.data){
+            if((typeof(item.show) === "undefined" || item.show) && type && item.data){
                 item.instance = CheapyChart.newType(type, this, item);
                 if(item.instance){
                     minValueList.push(item.instance.minValue());
@@ -287,13 +302,10 @@
             }
         }
     };
-    CheapyChart.prototype.renderOther = function(){
-
-    };
     CheapyChart.prototype._registerTick = function(callback){
         this.tickList.push(callback);
     };
-    CheapyChart.prototype._startTick = function(){
+    CheapyChart.prototype._startTick = function(closeAnimation){
         var option = this.options,
             animation = option.animation,
             list = this.tickList,
@@ -316,7 +328,7 @@
             time = animation.time;
             speed = time / size;
         }
-        if(animation.enable){
+        if(!closeAnimation && animation.enable){
             recursiveFunction();
         }
         else{
@@ -347,11 +359,9 @@
         if(canvas){
             $(canvas).on("touchstart", function(e){
                 var pos = me.getPixFromEvent(e);
-                console.dir(pos);
                 me._showToolTip(pos);
             }).on("touchmove", function(e){
                 var pos = me.getPixFromEvent(e);
-                console.dir(pos);
                 me._showToolTip(pos);
             }).on("touchend", function(e){
                 me._hideToolTip();
@@ -368,6 +378,15 @@
         var canvas = this.canvas, touch = event.touches[0];
         var offset = $(canvas).offset();
         return [touch.clientX - offset.left, touch.clientY - offset.top];
+    };
+    CheapyChart.prototype._clear = function(){
+        this.tickList = [];
+        this._cleanRect(0, 0, this.width, this.height);
+    };
+    CheapyChart.prototype._cleanRect = function(x, y, w, h){
+        var ctx = this.context;
+        ctx.clearRect(x, y, w, h);
+        ctx.restore();
     };
     CheapyChart.prototype._drawText = function(x, y, text, other){
         var context = this.context, options = this.options;
@@ -478,21 +497,51 @@
         ctx.closePath();
     };
     CheapyChart.prototype._showToolTip = function(pos){
-        var $el = $(this.el),
+        var $el = $(this.el), me = this,
             $tooltip = $el.children(".tooltip"),
             tooltip = this.options.tooltip,
-            obj = null, arr = null;
+            obj = null, arr = null, isTarget = false;
+        var options = this.options,
+            h = this.height,
+            y = options.position.y,
+            y2 = options.position.y2;
         if(tooltip && tooltip.show){
             if($tooltip.length == 0){
                 $tooltip = $('<div class="tooltip" style="position:absolute;left: 0px; top:0px;"></div>');
-                $el.after($tooltip);
+                $el.append($tooltip);
             }
-            obj = {};
             arr = [];
+            $.each(this.options.series, function(index, item){
+                if(item.instance){
+                    var temp = item.instance.getValueByPix(pos[0], pos[1]);
+                    if(temp){
+                        arr.push(temp);
+                    }
+                }
+            });
+            if(arr.length > 0){
+                isTarget = true;
+            }
+        }
+        if(isTarget){
+            var str = tooltip.formatter.call($tooltip.get(0), arr);
+            $tooltip.show();
+            var newPos = tooltip.position.call($tooltip.get(0), arr[0].pos);
+            $tooltip.css({
+                left: newPos[0],
+                top: newPos[1]
+            }).html(str);
+            this.renderAgain(function(){
+                me._drawLine(newPos[0], y, newPos[0], h -  y2, tooltip.lineStyle);
+            });
+        }
+        else{
+            $tooltip.hide();
         }
     };
     CheapyChart.prototype._hideToolTip = function(pos){
         var $el = $(this.el);
+        this.renderAgain();
         $el.children(".tooltip").hide();
     };
 
@@ -535,6 +584,25 @@
 
         },
         getValueByPix: function(x, y){
+            var chart = this.chart,
+                options = this.options,
+                count = this.chart.options.xAxis.data.length;
+            var xIndex = (x - chart.xLineStart) / (chart.xLineEnd - chart.xLineStart) * count;
+            var value = null;
+            if(xIndex > 0 && xIndex < count + 1){
+                xIndex = Math.round(xIndex - 0.25);
+                value = this.options.data[xIndex];
+                if(typeof(value)!=="undefined"){
+                    return {
+                        name: chart.options.xAxis.data[xIndex],
+                        seriesName: options.name,
+                        type: options.type,
+                        pos: chart.getPixFromValue(xIndex, value),
+                        value: value,
+                        index: xIndex
+                    }
+                }
+            }
             return null;
         }
     };
@@ -558,9 +626,6 @@
                     })
                 }
             });
-        },
-        getValueByPix: function(){
-
         }
     });
     CheapyChart.registerType("bar", {
@@ -584,13 +649,44 @@
     });
     CheapyChart.registerType("kline", {
         maxValue: function(){
-
+            var arr = [], options = this.options;
+            $.each(options.data, function(index, item){
+                if(item && item.length >= 4){
+                    arr.push(item[3]);
+                }
+            });
+            return Math.max.apply(Math, arr);
         },
         minValue: function(){
-
+            var arr = [], options = this.options;
+            $.each(options.data, function(index, item){
+                if(item && item.length >= 4){
+                    arr.push(item[2]);
+                }
+            });
+            return Math.min.apply(Math, arr);
         },
         render: function(){
-
+            var chart = this.chart,
+                options = this.options;
+            var lineStyle = $.extend({}, chart.options.base, options.lineStyle);
+            var upColor = lineStyle.upColor,
+                downColor = lineStyle.downColor;
+            $.each(options.data, function(index ,item){
+                var pos1 = chart.getPixFromValue(index, options.data[index][0]);
+                var pos2 = chart.getPixFromValue(index, options.data[index][1]);
+                var width = chart.xLineStep * 5 / 7 * chart.xStepCount / chart.options.xAxis.data.length;
+                var pos3 = [pos1[0] - width / 2, pos1[1] - 1];
+                var pos4 = [pos2[0] + width / 2, pos2[1] + 1];
+                var pos5 = chart.getPixFromValue(index, options.data[index][2]);
+                var pos6 = chart.getPixFromValue(index, options.data[index][3]);
+                var color = options.data[index][0] > options.data[index][1] ? downColor : upColor;
+                chart._registerTick(function(){
+                    var tempObject = $.extend({}, lineStyle, {color: color});
+                    chart._drawRect(pos3[0], pos3[1], pos4[0], pos4[1], tempObject);
+                    chart._drawLine(pos5[0], pos5[1] + 1, pos6[0], pos6[1] - 1, tempObject);
+                })
+            });
         }
     });
 
