@@ -50,6 +50,8 @@
             },
             splitLine: {
                 show: true,
+                first: false,
+                last: false,
                 count: 4,
                 lineStyle:{
                     color: ['#ccc'],
@@ -66,9 +68,6 @@
                 show: true,
                 position: "inside"
             },
-            axisTick:{
-
-            },
             axisLine: {
                 show: true,
                 onZero: true,
@@ -82,6 +81,8 @@
             splitLine: {
                 show: true,
                 count: 4,
+                first: false,
+                last: false,
                 lineStyle: {
                     color: ['#ccc'],
                     width: 1,
@@ -187,6 +188,17 @@
         }
         this.maxValue = Math.max.apply(Array, maxValueList);
         this.minValue = Math.min.apply(Array, minValueList);
+        if(options.yAxis.axisLine.onZero){
+            if(this.maxValue * this.minValue < 0){
+                item = Math.max(this.maxValue, Math.abs(this.minValue));
+                this.maxValue = item;
+                this.minValue = 0 - item;
+                item = options.yAxis.splitLine.count;
+                if(item % 2 == 0){
+
+                }
+            }
+        }
     };
     CheapyChart.prototype.renderTitle = function(){
         var title = this.options.title, context = this.context, me = this;
@@ -214,6 +226,7 @@
                 lineStart, lineStep, linePace,
                 gap1 = 0, gap2 = 0, totalGap;
             var arr = [];
+            var linePosArray = [], realCount = 100, realPace ;
             if(typeof(options[type + "Axis"].boundaryGap) === "object"){
                 gap1 = options[type + "Axis"].boundaryGap[0] || 0;
                 gap2 = options[type + "Axis"].boundaryGap[1] || 0;
@@ -221,6 +234,9 @@
                 gap2 = parseInt(gap2 * 100, 10);
             }
             if(type === "x"){
+                realCount = options.xAxis.data.length;
+                realPace = Math.floor(realCount / count);
+
                 lineStep = (width - x - x2) / 100;
                 linePace = lineStep * (100 - gap1 - gap2) / count;
                 lineStart = x + lineStep * gap1;
@@ -311,9 +327,14 @@
             list = this.tickList,
             size = list.length,
             iCount = 0, me = this,
+            step = 1,
             recursiveFunction = function(){
-                list[iCount ++]();
-                if(iCount >= size){
+                var start = Math.floor(iCount * step), end = Math.floor((iCount + 1) * step);
+                for(var i= start; i < end; i++){
+                    i < size && list[i]();
+                }
+                iCount ++;
+                if(end >= size){
                     me._stopTick();
                 }
                 else{
@@ -327,6 +348,7 @@
         if(animation.enable){
             time = animation.time;
             speed = time / size;
+            step = size / 60 / (time / 1000);
         }
         if(!closeAnimation && animation.enable){
             recursiveFunction();
@@ -371,7 +393,14 @@
     CheapyChart.prototype.getPixFromValue = function(index, value){
         var xDataCount = this.options.xAxis.data.length - 1;
         var xPos = index / xDataCount * this.xStepCount * this.xLineStep + this.xLineStart;
-        var yPos =  this.yLineStart - (value - this.minValue) / (this.maxValue - this.minValue) * this.yStepCount * this.yLineStep;
+        var yPos = null;
+        if(value <= this.minValue){
+            value = this.minValue;
+        }
+        else if(value >= this.maxValue){
+            value = this.maxValue;
+        }
+        yPos =  this.yLineStart - (value - this.minValue) / (this.maxValue - this.minValue) * this.yStepCount * this.yLineStep;
         return [xPos, yPos];
     };
     CheapyChart.prototype.getPixFromEvent = function(event){
@@ -390,17 +419,16 @@
     };
     CheapyChart.prototype._drawText = function(x, y, text, other){
         var context = this.context, options = this.options;
-        var fontSize = options.font.size, fontFamily = options.font.family,
-            fontWeight = options.font.weight, color = options.base.color;
-        context.font = [fontSize + "px", fontFamily, fontWeight].join(" ");
-        context.fillStyle = color;
-        context.fillText(text, x, y + fontSize);
+        var fontStyle = $.extend({}, options.font, {color: options.base.color}, other);
+        context.font = [fontStyle.size + "px", fontStyle.family, fontStyle.weight].join(" ");
+        context.fillStyle = fontStyle.color;
+        context.fillText(text, x, y + fontStyle.size);
         context.fill();
     };
     CheapyChart.prototype._drawLine = function(x, y, x2, y2, other){
         var ctx = this.context,
             type = other.type,
-            dashArray = [10, 5, 5];
+            dashArray = [5, 8, 5];
         if(type === "dot"){
             ctx.beginPath();
             ctx.strokeStyle = other.color;
@@ -525,14 +553,15 @@
         }
         if(isTarget){
             var str = tooltip.formatter.call($tooltip.get(0), arr);
+            $tooltip.html(str).css({left: 0, top: 0});
             $tooltip.show();
             var newPos = tooltip.position.call($tooltip.get(0), arr[0].pos);
             $tooltip.css({
                 left: newPos[0],
                 top: newPos[1]
-            }).html(str);
+            });
             this.renderAgain(function(){
-                me._drawLine(newPos[0], y, newPos[0], h -  y2, tooltip.lineStyle);
+                me._drawLine(arr[0].pos[0], y, arr[0].pos[0], h -  y2, tooltip.lineStyle);
             });
         }
         else{
@@ -604,6 +633,47 @@
                 }
             }
             return null;
+        },
+        renderMarkLine: function(){
+            var options = this.options, me = this;
+            if(options.markLine && $.isArray(options.markLine)){
+                $.each(options.markLine, function(index, item){
+                    me._renderMarkLine(item);
+                });
+            }
+        },
+        _renderMarkLine: function(lineOptions){
+            var type, value,
+                pos, lineStyle, fontStyle, textLength,
+                chart = this.chart,
+                options = this.options;
+            if(lineOptions){
+                type = lineOptions.type || "value";
+                value = 0;
+                if(type === "min"){
+                    value = this.minValue();
+                }
+                else if(type === "max"){
+                    value = this.maxValue();
+                }
+                else if(type === "average"){
+                    value = getAverage(this.options.data);
+                }
+                else if(type === "value"){
+                    value = lineOptions.value;
+                }
+                lineStyle = $.extend({}, chart.options.base, options.lineStyle, lineOptions.lineStyle);
+                fontStyle = $.extend({}, chart.options.base.font, lineOptions.textStyle);
+                pos = chart.getPixFromValue(0, value);
+                textLength = getTextSize("" + value) * fontStyle.size;
+                chart._registerTick(function(){
+                    chart._drawLine(chart.options.position.x, pos[1], chart.width - chart.options.position.x2, pos[1], lineStyle);
+                    chart._drawRect(chart.options.position.x + 3, pos[1] - fontStyle.size / 2 - 1, chart.options.position.x + 2 + textLength, pos[1] + fontStyle.size / 2 + 1, {
+                        color: "white"
+                    });
+                    chart._drawText(chart.options.position.x + 5, pos[1] - fontStyle.size / 2, value, fontStyle);
+                });
+            }
         }
     };
 
@@ -626,6 +696,7 @@
                     })
                 }
             });
+            this.renderMarkLine();
         }
     });
     CheapyChart.registerType("bar", {
@@ -645,6 +716,7 @@
                     })
                 }
             });
+            this.renderMarkLine();
         }
     });
     CheapyChart.registerType("kline", {
@@ -687,6 +759,7 @@
                     chart._drawLine(pos5[0], pos5[1] + 1, pos6[0], pos6[1] - 1, tempObject);
                 })
             });
+            this.renderMarkLine();
         }
     });
 
@@ -698,6 +771,50 @@
         else{
             return 0;
         }
+    }
+
+    function getAverage(list){
+        var sum = 0, size = 0;
+        if(list && list.length > 0){
+            size = list.length;
+            $.each(list, function(index, item){
+                sum += item;
+            });
+            sum = sum / size;
+        }
+        return sum;
+    }
+
+    function getTextSize(str){
+        var inTag = false, chineseRegex = /[^\x00-\xff]/g,
+            singleChar = '', newLength = 0, i;
+        for(i = 0; i<str.length; i++){
+            singleChar = str.charAt(i).toString();
+            if(singleChar == '<'){
+                inTag = true;
+            }
+            else if(singleChar == '>'){
+                inTag = false;
+                continue ;
+            }
+            if(inTag){
+                continue;
+            }
+            if(singleChar.match(chineseRegex) != null)
+            {
+                newLength += 2;
+            }
+            else
+            {
+                if(singleChar >= 'A' && singleChar <= 'Z'){
+                    newLength += 1.5;
+                }
+                else{
+                    newLength += 1;
+                }
+            }
+        }
+        return newLength ;
     }
 
     window.CheapyChart = CheapyChart;
