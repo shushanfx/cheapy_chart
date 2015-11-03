@@ -5,11 +5,22 @@
             time: 1000
         },
         title:{
+            position: "left",
             x: 50,
             y: 10,
             show: true,
             name: "Cheapy Chart",
             font: {
+                weight: "bold"
+            }
+        },
+        legend: {
+            show: false,
+            position: "right",
+            x: 50,
+            y: 10,
+            textStyle: {
+                size: 12,
                 weight: "bold"
             }
         },
@@ -33,10 +44,14 @@
             boundaryGap: [.02,.02],
             axisLabel:{
                 show: true,
-                position: "outside"
-            },
-            axisTick:{
-
+                formatter: function(value, index, list){
+                    return value;
+                },
+                x: 0,
+                y: 5,
+                textStyle: {
+                    fontSize: 12
+                }
             },
             axisLine: {
                 show: true,
@@ -66,7 +81,18 @@
             boundaryGap: [.02,.02],
             axisLabel:{
                 show: true,
-                position: "inside"
+                position: "right",
+                x: 35,
+                y: 20,
+                formatter: function(value, index, list){
+                    if(index === 0 || index === list.length - 1){
+                        return null;
+                    }
+                    return value;
+                },
+                textStyle: {
+                    size: 12
+                }
             },
             axisLine: {
                 show: true,
@@ -84,7 +110,7 @@
                 first: false,
                 last: false,
                 lineStyle: {
-                    color: ['#ccc'],
+                    color: '#ccc',
                     width: 1,
                     type: 'solid'
                 }
@@ -156,7 +182,7 @@
         this.renderSeries();
         beforeRender && beforeRender();
         this._startTick(true);
-    }
+    };
 
     CheapyChart.prototype.initCanvas = function(){
         var width = this.width,
@@ -201,10 +227,16 @@
         }
     };
     CheapyChart.prototype.renderTitle = function(){
-        var title = this.options.title, context = this.context, me = this;
+        var title = this.options.title,
+            context = this.context,
+            me = this;
+        var newX;
         if(context && title && title.show){
+            if(title.position === "right"){
+                newX = me.width - title.x - me._measureText(title.name, title.textStyle).width;
+            }
             this._registerTick(function(){
-                me._drawText(title.x, title.y, title.name, title);
+                me._drawText(title.x, title.y, title.name, title, title.textStyle);
             });
         }
     };
@@ -226,7 +258,7 @@
                 lineStart, lineStep, linePace,
                 gap1 = 0, gap2 = 0, totalGap;
             var arr = [];
-            var linePosArray = [], realCount = 100, realPace ;
+            var realCount = null, temp, realSpace;
             if(typeof(options[type + "Axis"].boundaryGap) === "object"){
                 gap1 = options[type + "Axis"].boundaryGap[0] || 0;
                 gap2 = options[type + "Axis"].boundaryGap[1] || 0;
@@ -234,16 +266,27 @@
                 gap2 = parseInt(gap2 * 100, 10);
             }
             if(type === "x"){
-                realCount = options.xAxis.data.length;
-                realPace = Math.floor(realCount / count);
-
+                realCount = options.xAxis.data.length - 1;
                 lineStep = (width - x - x2) / 100;
-                linePace = lineStep * (100 - gap1 - gap2) / count;
+                linePace = lineStep * (100 - gap1 - gap2) / realCount;
                 lineStart = x + lineStep * gap1;
                 me.xLineStart = lineStart;
                 me.xLineEnd = lineStart + lineStep * (100 - gap1 - gap2);
                 me.xLineStep = lineStep;
                 me.xStepCount = (100 - gap1 - gap2);
+                temp = realCount / count - Math.floor(realCount % count);
+                realSpace = Math.ceil(realCount / count);
+                if(temp > 0 && temp < 0.25){
+                    count = count - 1;
+                }
+                for(var i = 0; i <= count; i++){
+                    if(i === count){
+                        arr.push(me.xLineEnd);
+                    }
+                    else{
+                        arr.push(lineStart + (linePace * i * realSpace));
+                    }
+                }
             }
             else{
                 lineStep = (height - y - y2) / 100;
@@ -253,68 +296,129 @@
                 me.yLineEnd = lineStart + lineStep * (100 - gap1 - gap2);
                 me.yLineStep = lineStep;
                 me.yStepCount = (100 - gap1 - gap2);
-            }
-            for(var i = 0; i < count; i++){
-                if(i == 0){
-                    continue;
-                }
-                if(i === count){
-                    if(type === "x"){
-                        arr.push(width - x2);
-                    }
-                    else if(type === "y"){
-                        arr.push(y);
-                    }
-                }
-                else{
-                    if(type === "x"){
-                        arr.push(lineStart + (linePace * i));
-                    }
-                    else if(type === "y"){
-                        arr.push(lineStart - (linePace * i));
-                    }
+                for(var i = 0; i <= count; i++){
+                    arr.push(lineStart - (linePace * i));
                 }
             }
             return arr;
         };
+
+        var xAxisCount, xAxisPace;
+
         this.xLineArray = generateLineArray("x");
         this.yLineArray = generateLineArray("y");
         for(i = 0; i < curSize; i++){
             (function(i){
                 me._registerTick(function(){
-                    options.xAxis.axisLabel.show && (xPosition === "both" || xPosition === "bottom") && me._drawLine(x +  i * curXPace, height - y2, x + (i + 1) * curXPace, height - y2, options.xAxis.axisLine.lineStyle);
-                    options.yAxis.axisLabel.show && (yPosition === "both" || yPosition === "left") &&  me._drawLine(x, (height - y2) - i * curYPace, x, (height - y2) - (i + 1) * curYPace, options.yAxis.axisLine.lineStyle);
-                    options.xAxis.axisLabel.show && (xPosition === "both" || xPosition === "top") &&  me._drawLine(x +  i * curXPace, y, x + (i + 1) * curXPace, y, options.xAxis.axisLine.lineStyle);
-                    options.yAxis.axisLabel.show && (yPosition === "both" || yPosition === "right") && me._drawLine(width - x2, (height - y2) - i * curYPace, width - x2, (height - y2) - (i + 1) * curYPace, options.yAxis.axisLine.lineStyle);
+                    options.xAxis.axisLine.show && (xPosition === "both" || xPosition === "bottom") && me._drawLine(x +  i * curXPace, height - y2, x + (i + 1) * curXPace, height - y2, options.xAxis.axisLine.lineStyle);
+                    options.yAxis.axisLine.show && (yPosition === "both" || yPosition === "left") &&  me._drawLine(x, (height - y2) - i * curYPace, x, (height - y2) - (i + 1) * curYPace, options.yAxis.axisLine.lineStyle);
+                    options.xAxis.axisLine.show && (xPosition === "both" || xPosition === "top") &&  me._drawLine(x +  i * curXPace, y, x + (i + 1) * curXPace, y, options.xAxis.axisLine.lineStyle);
+                    options.yAxis.axisLine.show && (yPosition === "both" || yPosition === "right") && me._drawLine(width - x2, (height - y2) - i * curYPace, width - x2, (height - y2) - (i + 1) * curYPace, options.yAxis.axisLine.lineStyle);
                     if(options.xAxis.splitLine.show){
                         $.each(me.xLineArray, function(index, item){
-                            me._drawLine(item, (height - y2) - i * curYPace, item, (height - y2) - (i + 1) * curYPace, {
-                                color : getIndex(options.xAxis.splitLine.lineStyle.color, index),
-                                width: options.xAxis.splitLine.lineStyle.width,
-                                type: options.xAxis.splitLine.lineStyle.type
-                            });
+                            if(index === 0 && !options.xAxis.splitLine.first){
+                                return true;
+                            }
+                            if(index === me.xLineArray.length - 1 && !options.xAxis.splitLine.last){
+                                return true;
+                            }
+                            me._drawLine(item, (height - y2) - i * curYPace, item, (height - y2) - (i + 1) * curYPace, options.xAxis.splitLine.lineStyle);
                         });
                     }
                     if(options.yAxis.splitLine.show){
                         $.each(me.yLineArray, function(index, item){
-                            me._drawLine(x +  i * curXPace, item, x + (i + 1) * curXPace, item, {
-                                color : getIndex(options.yAxis.splitLine.lineStyle.color, index),
-                                width: options.yAxis.splitLine.lineStyle.width,
-                                type: options.yAxis.splitLine.lineStyle.type
-                            });
+                            if(index === 0 && !options.yAxis.splitLine.first){
+                                return true;
+                            }
+                            if(index === me.yLineArray.length - 1 && !options.yAxis.splitLine.last){
+                                return true;
+                            }
+                            me._drawLine(x +  i * curXPace, item, x + (i + 1) * curXPace, item, options.yAxis.splitLine.lineStyle);
                         });
                     }
                 });
             })(i);
         }
+        // render x Label
+        if(options.xAxis.axisLabel.show){
+            xAxisCount = options.xAxis.splitLine.count;
+            xAxisPace = Math.floor(options.xAxis.data.length / xAxisCount);
+            $.each(me.xLineArray, function(index, item){
+                var newX = item, value = null, myWidth;
+                var myIndex = xAxisPace * index;
+                var myObj = null;
+                if(index === me.xLineArray.length - 1){
+                    myIndex = options.xAxis.data.length - 1;
+                }
+                value = options.xAxis.data[myIndex];
+                value = options.xAxis.axisLabel.formatter.call(me, value, index, me.xLineArray);
+                if(value){
+                    myObj = me._measureText(value, options.xAxis.axisLabel.textStyle);
+                    myWidth = myObj.width;
+                    if(index === 0){
+                        // do nothing
+                    }
+                    else if(index === me.xLineArray.length - 1){
+                        newX = newX - myWidth;
+                    }
+                    else{
+                        newX = newX - myWidth / 2;
+                    }
+                    me._registerTick(function(){
+                        me._drawText(newX + options.xAxis.axisLabel.x, height - options.xAxis.axisLabel.y - myObj.height, value, options.xAxis.axisLabel.textStyle);
+                    });
+                }
+            });
+        }
+        // render y label
+        if(options.yAxis.axisLabel.show){
+            $.each(me.yLineArray, function(index, item){
+                var newValue = (height - y2) - item;
+                var newX, newY=null;
+                newValue = ((me.maxValue - me.minValue) * newValue / (me.height - y2 - y) + me.minValue).toFixed(2);
+                newValue = options.yAxis.axisLabel.formatter.call(me, newValue, index, me.yLineArray);
+                if(newValue){
+                    if(options.yAxis.axisLabel.position === "left"){
+                        newX = x + options.yAxis.axisLabel.x;
+                    }
+                    else{
+                        newX = width - x2 - options.yAxis.axisLabel.x - me._measureText(newValue, options.yAxis.axisLabel.textStyle).width;
+                    }
+                    newY = item - options.yAxis.axisLabel.y;
+                }
+                newValue && me._registerTick(function(){
+                    me._drawText(newX, newY, newValue, options.yAxis.axisLabel.textStyle);
+                });
+            });
+        }
     };
     CheapyChart.prototype.renderSeries = function(){
         var list = this.options.series;
-        var i, item;
+        var options = this.options;
+        var i, item, me = this;
+        var legendWidth = 0;
+        if(options.legend.show){
+            if(options.legend.position == "left"){
+                legendWidth += options.legend.x;
+            }
+            else{
+                legendWidth += options.legend.x;
+            }
+        }
         for(i = 0; i < list.length; i++){
             item = list[i];
             if(item.instance){
                 item.instance.render();
+                if(options.legend.show){
+                    if(options.legend.position === "left"){
+                        item.instance.renderLegend(legendWidth);
+                        legendWidth += (me._measureText(item.name, options.legend.textStyle).width + 3 + 12 + 3);
+                    }
+                    else{
+                        legendWidth += (me._measureText(item.name, options.legend.textStyle).width + 3 + 12 + 3);
+                        item.instance.renderLegend(me.width - legendWidth);
+                    }
+                }
             }
         }
     };
@@ -425,6 +529,14 @@
         context.fillText(text, x, y + fontStyle.size);
         context.fill();
     };
+
+    CheapyChart.prototype._measureText = function(text, other){
+        var context = this.context, options = this.options;
+        var fontStyle = $.extend({}, options.font, {color: options.base.color}, other);
+        context.font = [fontStyle.size + "px", fontStyle.family, fontStyle.weight].join(" ");
+        return {width: context.measureText(text).width, height: fontStyle.size};
+    };
+
     CheapyChart.prototype._drawLine = function(x, y, x2, y2, other){
         var ctx = this.context,
             type = other.type,
@@ -647,6 +759,7 @@
                 pos, lineStyle, fontStyle, textLength,
                 chart = this.chart,
                 options = this.options;
+            var newX = 0, newY = 0;
             if(lineOptions){
                 type = lineOptions.type || "value";
                 value = 0;
@@ -665,15 +778,33 @@
                 lineStyle = $.extend({}, chart.options.base, options.lineStyle, lineOptions.lineStyle);
                 fontStyle = $.extend({}, chart.options.base.font, lineOptions.textStyle);
                 pos = chart.getPixFromValue(0, value);
-                textLength = getTextSize("" + value) * fontStyle.size;
+                textLength = chart._measureText(value, fontStyle);
                 chart._registerTick(function(){
+                    var newValue = value;
                     chart._drawLine(chart.options.position.x, pos[1], chart.width - chart.options.position.x2, pos[1], lineStyle);
-                    chart._drawRect(chart.options.position.x + 3, pos[1] - fontStyle.size / 2 - 1, chart.options.position.x + 2 + textLength, pos[1] + fontStyle.size / 2 + 1, {
-                        color: "white"
-                    });
-                    chart._drawText(chart.options.position.x + 5, pos[1] - fontStyle.size / 2, value, fontStyle);
+                    if(lineOptions.formatter){
+                        newValue = lineOptions.formatter.call(chart, newValue);
+                    }
+                    if(lineOptions.x > 0){
+                        newX = lineOptions.x;
+                    }
+                    if(lineOptions.y > 0){
+                        newY = lineOptions.y;
+                    }
+                    if(pos[1] - newY < chart.options.position.y){
+                        newY = newY - textLength.height - 4;
+                    }
+                    else if(pos[1] - newY + textLength.height > chart.height - chart.options.position.y2){
+                        newY = newY + textLength.height + 4;
+                    }
+                    if(newValue){
+                        chart._drawText(chart.options.position.x + newX, pos[1] - newY, newValue, fontStyle);
+                    }
                 });
             }
+        },
+        renderLegend: function(){
+
         }
     };
 
@@ -697,6 +828,18 @@
                 }
             });
             this.renderMarkLine();
+        },
+        renderLegend: function(startX){
+            var options = this.options,
+                chart = this.chart;
+            var name = options.name;
+            var lineStyle = $.extend({}, chart.options.base, options.lineStyle);
+            var textWidth = chart._measureText(name, chart.options.legend.textStyle).width;
+            chart._registerTick(function(){
+                chart._drawLine(startX, chart.options.legend.y + chart.options.legend.textStyle.size / 2,
+                        startX + 12, chart.options.legend.y + chart.options.legend.textStyle.size / 2, lineStyle);
+                chart._drawText(startX + 15, chart.options.legend.y, name, chart.options.legend.textStyle);
+            });
         }
     });
     CheapyChart.registerType("bar", {
@@ -717,6 +860,18 @@
                 }
             });
             this.renderMarkLine();
+        },
+        renderLegend: function(startX){
+            var options = this.options,
+                chart = this.chart;
+            var name = options.name;
+            var lineStyle = $.extend({}, chart.options.base, options.lineStyle);
+            var textWidth = chart._measureText(name, chart.options.legend.textStyle).width;
+            chart._registerTick(function(){
+                chart._drawRect(startX, chart.options.legend.y,
+                        startX + 12, chart.options.legend.y + chart.options.legend.textStyle.size, lineStyle);
+                chart._drawText(startX + 12 + 3, chart.options.legend.y, name, chart.options.legend.textStyle);
+            });
         }
     });
     CheapyChart.registerType("kline", {
