@@ -486,9 +486,11 @@
             $(canvas).on("touchstart", function(e){
                 var pos = me.getPixFromEvent(e);
                 me._showToolTip(pos);
+                e.preventDefault();
             }).on("touchmove", function(e){
                 var pos = me.getPixFromEvent(e);
                 me._showToolTip(pos);
+                e.preventDefault();
             }).on("touchend", function(e){
                 me._hideToolTip();
             });
@@ -727,11 +729,17 @@
         getValueByPix: function(x, y){
             var chart = this.chart,
                 options = this.options,
-                count = this.chart.options.xAxis.data.length;
-            var xIndex = (x - chart.xLineStart) / (chart.xLineEnd - chart.xLineStart) * count;
+                count = this.chart.options.xAxis.data.length - 1;
+            var xIndex = null;
             var value = null;
-            if(xIndex > 0 && xIndex < count + 1){
-                xIndex = Math.round(xIndex - 0.25);
+            if(count == 0){
+                xIndex = 0;
+            }
+            else{
+                xIndex = (x - chart.xLineStart) / (chart.xLineEnd - chart.xLineStart) * count
+            }
+            if(xIndex >= 0 && xIndex < count + 1){
+                xIndex = Math.round(xIndex);
                 value = this.options.data[xIndex];
                 if(typeof(value)!=="undefined"){
                     return {
