@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+    <title>CheapyChart Bar</title>
+    <script src="js/zepto-1.1.4.min.js" type="text/javascript"></script>
+    <script src="js/cheapy_chart.js" type="text/javascript"></script>
+</head>
+<body>
+<div id="container" style="position: relative;height: 300px; width: 400px;"></div>
+<script type="text/javascript">
+    $(function(){
+        var chart = new CheapyChart({
+            el: "#container",
+            animation: {
+                enable: true,
+                timeout: 2000
+            },
+            title: {
+                name: "Cheapy"
+            },
+            legend: {
+                show: true
+            },
+            tooltip: {
+                show: true,
+                formatter: function(arr){
+                    var html = [], item , i, type;
+                    for(i= 0; i < arr.length; i++){
+                        item = arr[i];
+                        if(item){
+                            type = item.type;
+                            if(type === "kline"){
+                                html.push('<div class="gp-pos-v2">');
+                                html.push('<i></i>');
+                                html.push('<div class="p1"><span>开盘：', item.value[0] ,'</span></div>');
+                                html.push('<div class="p1"><span>收盘：', item.value[1] ,'</span></div>');
+                                html.push('<div class="p2">', item.name ,'</div>');
+                                html.push('</div>');
+                            }
+                        }
+                    }
+                    return html.join("");
+                },
+                position: function(arr){
+                    return [arr[0], 400];
+                }
+            },
+            yAxis: {
+                boundaryGap: [.05, 0.05],
+                splitLine: {
+                    show: 1
+                }
+            },
+            xAxis: {
+                boundaryGap: [.05,.05],
+                splitLine: {
+                    show: false,
+                    count: 9,
+                    itemStyle: {
+                        type: "dot"
+                    }
+                },
+                axisLabel: {
+
+                },
+                axisLine: {
+                    show: true
+                },
+                data: [
+                    "1", "2", "3", "4", "5", "6", "7", "8", "9"
+                ]
+            },
+            series : [{
+                show: true,
+                type: "bar",
+                name: "myBar2",
+                data: [1, 2, 0, 4, 5, 0, 7, 8, 0],
+                lineStyle: {
+                    color: "#F28888"
+                }
+            }, {
+                show: true,
+                type: "bar",
+                name: "myBar1",
+                data: [0, 0, -3.5, 0, 0, -5, 0, 0, -9],
+                lineStyle: {
+                    color: "#AED244"
+                }
+            }]
+        });
+        chart.render();
+    });
+</script>
+</body>
+</html>

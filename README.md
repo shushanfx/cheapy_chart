@@ -7,10 +7,14 @@ html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。
     <script src="js/cheapy_chart.js" type="text/javascript"></script>
 ```
 ## 线形图（line）
-[](https://github.com/shushanfx/html_canvas/edit/master/js/cheapy_canvas.js)
+代码参见line.html
+![Line Image](images/line.png)
 ## 条形图（bar)
-
+代码插件bar.html
+![Bar Image](images/bar.png)
 ## k线图（kline)
+代码参见kline.html
+![Line Image](images/kline.png)
 ## 扩展
 ```javascript
 CheapyChart.registerType(name, {

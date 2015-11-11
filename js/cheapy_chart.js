@@ -6,7 +6,7 @@
         },
         title:{
             position: "left",
-            x: 50,
+            x: 33,
             y: 10,
             show: true,
             name: "Cheapy Chart",
@@ -17,7 +17,7 @@
         legend: {
             show: false,
             position: "right",
-            x: 50,
+            x: 10,
             y: 10,
             textStyle: {
                 size: 12,
@@ -31,8 +31,8 @@
                 width: 1,
                 type: 'solid'
             },
-            formatter: function(param){
-                return "Hello Cheaphy!"
+            formatter: function(){
+                return "Hello Cheaphy!";
             },
             position: function(arr){
                 return arr;
@@ -41,10 +41,10 @@
         xAxis: {
             show: true,
             name: "x轴",
-            boundaryGap: [.02,.02],
+            boundaryGap: [0.02,0.02],
             axisLabel:{
                 show: true,
-                formatter: function(value, index, list){
+                formatter: function(value){
                     return value;
                 },
                 x: 0,
@@ -78,12 +78,12 @@
         yAxis: {
             show: true,
             name: "y轴",
-            boundaryGap: [.02,.02],
+            boundaryGap: [0.02,0.02],
             axisLabel:{
                 show: true,
                 position: "right",
-                x: 35,
-                y: 20,
+                x: -25,
+                y: 8,
                 formatter: function(value, index, list){
                     if(index === 0 || index === list.length - 1){
                         return null;
@@ -120,7 +120,7 @@
         position: {
             x: 30,
             y: 30,
-            x2: 20,
+            x2: 30,
             y2: 20
         },
         font: {
@@ -169,6 +169,7 @@
     CheapyChart.prototype.render = function(){
         this.initCanvas();
         this.initSeries();
+        this._clear();
         this.renderTitle();
         this.renderAxis();
         this.renderSeries();
@@ -200,7 +201,7 @@
         var list = this.options.series;
         var options = this.options;
         var i, item, type;
-        var minValueList = [], maxValueList = [], me = this;
+        var minValueList = [], maxValueList = [];
         for(i = 0; i < list.length; i++){
             item = list[i];
             type = item.type;
@@ -220,7 +221,7 @@
                 this.maxValue = item;
                 this.minValue = 0 - item;
                 item = options.yAxis.splitLine.count;
-                if(item % 2 == 0){
+                if(item % 2 === 0){
 
                 }
             }
@@ -256,7 +257,7 @@
         var generateLineArray = function(type){
             var count = options[type + "Axis"].splitLine.count,
                 lineStart, lineStep, linePace,
-                gap1 = 0, gap2 = 0, totalGap;
+                gap1 = 0, gap2 = 0, i;
             var arr = [];
             var realCount = null, temp, realSpace;
             if(typeof(options[type + "Axis"].boundaryGap) === "object"){
@@ -279,7 +280,7 @@
                 if(temp > 0 && temp < 0.25){
                     count = count - 1;
                 }
-                for(var i = 0; i <= count; i++){
+                for(i = 0; i <= count; i++){
                     if(i === count){
                         arr.push(me.xLineEnd);
                     }
@@ -289,6 +290,9 @@
                 }
             }
             else{
+                if(me.minValue === me.maxValue){
+                    count = 2;
+                }
                 lineStep = (height - y - y2) / 100;
                 linePace = lineStep * (100 - gap1 - gap2) / count;
                 lineStart = height - y2 - (lineStep * gap2);
@@ -296,7 +300,7 @@
                 me.yLineEnd = lineStart + lineStep * (100 - gap1 - gap2);
                 me.yLineStep = lineStep;
                 me.yStepCount = (100 - gap1 - gap2);
-                for(var i = 0; i <= count; i++){
+                for(i = 0; i <= count; i++){
                     arr.push(lineStart - (linePace * i));
                 }
             }
@@ -357,9 +361,10 @@
                     myWidth = myObj.width;
                     if(index === 0){
                         // do nothing
+                        newX = Math.max(x, newX - myWidth / 2);
                     }
                     else if(index === me.xLineArray.length - 1){
-                        newX = newX - myWidth;
+                        newX = Math.min(newX + myWidth / 2, width - x2) - myWidth;
                     }
                     else{
                         newX = newX - myWidth / 2;
@@ -442,13 +447,19 @@
                     me._stopTick();
                 }
                 else{
-                    me._nextTick(recursiveFunction, speed)
+                    me._nextTick(recursiveFunction, speed);
                 }
             },
             time, speed;
-        if(size == 0){
+
+        if(size === 0){
             return ;
         }
+        // Sogou浏览器关闭动画效果
+        if(/SogouMobileBrowser/gi.exec(navigator.userAgent)){
+            animation.enable = false;
+        }
+
         if(animation.enable){
             time = animation.time;
             speed = time / size;
@@ -460,7 +471,7 @@
         else{
             $.each(list, function(){
                 this();
-            })
+            });
         }
     };
     CheapyChart.prototype._stopTick = function(){
@@ -481,25 +492,25 @@
     };
     CheapyChart.prototype._bindEvent = function(){
         var canvas = this.canvas, me = this;
-        var xStart = this.xLineStart, xEnd = this.xLineEnd;
         if(canvas){
             $(canvas).on("touchstart", function(e){
                 var pos = me.getPixFromEvent(e);
-                me._showToolTip(pos);
-                e.preventDefault();
+                me._showToolTip(pos, e);
             }).on("touchmove", function(e){
                 var pos = me.getPixFromEvent(e);
-                me._showToolTip(pos);
-                e.preventDefault();
-            }).on("touchend", function(e){
+                me._showToolTip(pos, e);
+            }).on("touchend", function(){
                 me._hideToolTip();
             });
         }
-    }
+    };
     CheapyChart.prototype.getPixFromValue = function(index, value){
         var xDataCount = this.options.xAxis.data.length - 1;
         var xPos = index / xDataCount * this.xStepCount * this.xLineStep + this.xLineStart;
         var yPos = null;
+        if(this.minValue === this.maxValue){
+            return [xPos, this.yLineStart - Math.abs((this. yLineStart - this.yLineEnd) / 2)];
+        }
         if(value <= this.minValue){
             value = this.minValue;
         }
@@ -555,8 +566,8 @@
             var dashIndex = 0, draw = true;
             while (distRemaining >= 0.1 && dashIndex < 10000) {
                 var dashLength = dashArray[dashIndex++ % dashCount];
-                if (dashLength == 0) dashLength = 0.001; // Hack for Safari
-                if (dashLength > distRemaining) dashLength = distRemaining;
+                if (dashLength === 0) {dashLength = 0.001;} // Hack for Safari
+                if (dashLength > distRemaining) {dashLength = distRemaining;}
                 var xStep = Math.sqrt(dashLength * dashLength / (1 + slope * slope));
                 x += xStep;
                 y += slope * xStep;
@@ -593,8 +604,8 @@
             var dashIndex = 0, draw = true;
             while (distRemaining >= 0.1 && dashIndex < 10000) {
                 var dashLength = dashArray[dashIndex++ % dashCount];
-                if (dashLength == 0) dashLength = 0.001; // Hack for Safari
-                if (dashLength > distRemaining) dashLength = distRemaining;
+                if (dashLength === 0) {dashLength = 0.001;} // Hack for Safari
+                if (dashLength > distRemaining) {dashLength = distRemaining;}
                 var xStep = Math.sqrt(dashLength * dashLength / (1 + slope * slope));
                 x += xStep;
                 y += slope * xStep;
@@ -613,9 +624,6 @@
             ctx.stroke();
             ctx.closePath();
         }
-    };
-    CheapyChart.prototype._drawArc = function(x, y, radiu, percent, isRevert, other){
-
     };
     CheapyChart.prototype._drawCircle = function(x, y, other){
         var ctx = this.context;
@@ -638,19 +646,22 @@
         ctx.fill();
         ctx.closePath();
     };
-    CheapyChart.prototype._showToolTip = function(pos){
-        var $el = $(this.el), me = this,
+    CheapyChart.prototype._showToolTip = function(pos, e){
+        var $el = $(this.el),
             $tooltip = $el.children(".tooltip"),
+            $toolline = $el.children(".toolline"),
             tooltip = this.options.tooltip,
-            obj = null, arr = null, isTarget = false;
+            arr = null, isTarget = false;
         var options = this.options,
             h = this.height,
             y = options.position.y,
             y2 = options.position.y2;
         if(tooltip && tooltip.show){
-            if($tooltip.length == 0){
+            if($tooltip.length === 0){
                 $tooltip = $('<div class="tooltip" style="position:absolute;left: 0px; top:0px;"></div>');
                 $el.append($tooltip);
+                $toolline = $('<div class="toolline" style="border: none; border-right: solid red 1px;position: absolute; left:0px; top: ' + y + 'px; height: ' + (h - y - y2) + 'px; display:block;background-color:none;"></div>');
+                $el.append($toolline);
             }
             arr = [];
             $.each(this.options.series, function(index, item){
@@ -674,18 +685,28 @@
                 left: newPos[0],
                 top: newPos[1]
             });
-            this.renderAgain(function(){
-                me._drawLine(arr[0].pos[0], y, arr[0].pos[0], h -  y2, tooltip.lineStyle);
-            });
+            $toolline.css({
+                "width" : arr[0].pos[0] + "px",
+                "border-right-style" : tooltip.lineStyle.type,
+                "border-right-color" : tooltip.lineStyle.color,
+                "border-right-width" : tooltip.lineStyle.width + "px"
+            }).show();
+//            this.renderAgain(function(){
+//                me._drawLine(arr[0].pos[0], y, arr[0].pos[0], h -  y2, tooltip.lineStyle);
+//            });
+
+            e && e.preventDefault();
         }
         else{
             $tooltip.hide();
+            $toolline.hide();
         }
     };
-    CheapyChart.prototype._hideToolTip = function(pos){
+    CheapyChart.prototype._hideToolTip = function(){
         var $el = $(this.el);
         this.renderAgain();
         $el.children(".tooltip").hide();
+        $el.children(".toolline").hide();
     };
 
     CheapyChart.registerType = function(type, ext){
@@ -700,9 +721,9 @@
         map[type] = fun;
     };
     CheapyChart.newType = function(type, chart, options){
-        var cls = this.TYPES[type];
-        if(cls){
-            return new cls(chart, options);
+        var Cls = this.TYPES[type];
+        if(Cls){
+            return new Cls(chart, options);
         }
         return null;
     };
@@ -732,11 +753,11 @@
                 count = this.chart.options.xAxis.data.length - 1;
             var xIndex = null;
             var value = null;
-            if(count == 0){
+            if(count === 0){
                 xIndex = 0;
             }
             else{
-                xIndex = (x - chart.xLineStart) / (chart.xLineEnd - chart.xLineStart) * count
+                xIndex = (x - chart.xLineStart) / (chart.xLineEnd - chart.xLineStart) * count;
             }
             if(xIndex >= 0 && xIndex < count + 1){
                 xIndex = Math.round(xIndex);
@@ -749,7 +770,7 @@
                         pos: chart.getPixFromValue(xIndex, value),
                         value: value,
                         index: xIndex
-                    }
+                    };
                 }
             }
             return null;
@@ -822,7 +843,7 @@
                 options = this.options;
             var lineStyle = $.extend({}, chart.options.base, options.lineStyle);
             var other = $.extend({}, chart.options.base.markStyle, options.markStyle);
-            $.each(options.data, function(index ,item){
+            $.each(options.data, function(index){
                 if(index !== options.data.length - 1){
                     var pos1 = chart.getPixFromValue(index, options.data[index]),
                         pos2 = chart.getPixFromValue(index + 1, options.data[index + 1]);
@@ -832,7 +853,7 @@
                             chart._drawCircle(pos1[0], pos1[1], other);
                             chart._drawCircle(pos2[0], pos2[1], other);
                         }
-                    })
+                    });
                 }
             });
             this.renderMarkLine();
@@ -842,7 +863,7 @@
                 chart = this.chart;
             var name = options.name;
             var lineStyle = $.extend({}, chart.options.base, options.lineStyle);
-            var textWidth = chart._measureText(name, chart.options.legend.textStyle).width;
+            //var textWidth = chart._measureText(name, chart.options.legend.textStyle).width;
             chart._registerTick(function(){
                 chart._drawLine(startX, chart.options.legend.y + chart.options.legend.textStyle.size / 2,
                         startX + 12, chart.options.legend.y + chart.options.legend.textStyle.size / 2, lineStyle);
@@ -855,7 +876,7 @@
             var chart = this.chart,
                 options = this.options;
             var lineStyle = $.extend({}, chart.options.base, options.lineStyle);
-            $.each(options.data, function(index ,item){
+            $.each(options.data, function(index){
                 if(index < options.data.length){
                     var pos1 = chart.getPixFromValue(index, options.data[index]);
                     var pos2 = chart.getPixFromValue(index, 0);
@@ -864,7 +885,7 @@
                     var pos4 = [pos2[0] + width / 2, pos2[1]];
                     chart._registerTick(function(){
                         chart._drawRect(pos3[0], pos3[1], pos4[0], pos4[1], lineStyle);
-                    })
+                    });
                 }
             });
             this.renderMarkLine();
@@ -874,7 +895,6 @@
                 chart = this.chart;
             var name = options.name;
             var lineStyle = $.extend({}, chart.options.base, options.lineStyle);
-            var textWidth = chart._measureText(name, chart.options.legend.textStyle).width;
             chart._registerTick(function(){
                 chart._drawRect(startX, chart.options.legend.y,
                         startX + 12, chart.options.legend.y + chart.options.legend.textStyle.size, lineStyle);
@@ -907,7 +927,7 @@
             var lineStyle = $.extend({}, chart.options.base, options.lineStyle);
             var upColor = lineStyle.upColor,
                 downColor = lineStyle.downColor;
-            $.each(options.data, function(index ,item){
+            $.each(options.data, function(index){
                 var pos1 = chart.getPixFromValue(index, options.data[index][0]);
                 var pos2 = chart.getPixFromValue(index, options.data[index][1]);
                 var width = chart.xLineStep * 5 / 7 * chart.xStepCount / chart.options.xAxis.data.length;
@@ -920,21 +940,11 @@
                     var tempObject = $.extend({}, lineStyle, {color: color});
                     chart._drawRect(pos3[0], pos3[1], pos4[0], pos4[1], tempObject);
                     chart._drawLine(pos5[0], pos5[1] + 1, pos6[0], pos6[1] - 1, tempObject);
-                })
+                });
             });
             this.renderMarkLine();
         }
     });
-
-
-    function getIndex(arr, index){
-        if(arr.length > 1){
-            return index % arr.length;
-        }
-        else{
-            return 0;
-        }
-    }
 
     function getAverage(list){
         var sum = 0, size = 0;
@@ -946,38 +956,6 @@
             sum = sum / size;
         }
         return sum;
-    }
-
-    function getTextSize(str){
-        var inTag = false, chineseRegex = /[^\x00-\xff]/g,
-            singleChar = '', newLength = 0, i;
-        for(i = 0; i<str.length; i++){
-            singleChar = str.charAt(i).toString();
-            if(singleChar == '<'){
-                inTag = true;
-            }
-            else if(singleChar == '>'){
-                inTag = false;
-                continue ;
-            }
-            if(inTag){
-                continue;
-            }
-            if(singleChar.match(chineseRegex) != null)
-            {
-                newLength += 2;
-            }
-            else
-            {
-                if(singleChar >= 'A' && singleChar <= 'Z'){
-                    newLength += 1.5;
-                }
-                else{
-                    newLength += 1;
-                }
-            }
-        }
-        return newLength ;
     }
 
     window.CheapyChart = CheapyChart;
