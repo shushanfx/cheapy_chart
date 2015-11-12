@@ -57,22 +57,29 @@ html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。
   },
   tooltip: {
       show: true,
+      // 是否显示hover是的提示信息，默认不显示
       lineStyle: {
           color: '#48b',
           width: 1,
           type: 'solid'
       },
+      // 提示的线条的样式，颜色，宽度以及类型（solid/dot）
       formatter: function(){
           return "Hello Cheaphy!";
       },
+      // 提示的文字
       position: function(arr){
           return arr;
       }
+      // 文字的位置，返回信息点的值[x, y]
   },
   xAxis: {
       show: true,
+      // 是否显示X轴
       name: "x轴",
+      // X轴的名称
       boundaryGap: [0.02,0.02],
+      // 左右边界的距离，总距离按1计算
       axisLabel:{
           show: true,
           formatter: function(value){
@@ -84,6 +91,7 @@ html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。
               fontSize: 12
           }
       },
+      // 坐标轴标签
       axisLine: {
           show: true,
           onZero: true,
@@ -94,6 +102,7 @@ html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。
               type: 'solid'
           }
       },
+      // 坐标轴样式
       splitLine: {
           show: true,
           first: false,
@@ -104,12 +113,18 @@ html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。
               width: 1,
               type: 'solid'
           }
-      }
+      },
+      // 分界线样式
+      data: [] 
+      // 数值
   },
   yAxis: {
       show: true,
+      // 是否显示y轴
       name: "y轴",
+      // y轴名称
       boundaryGap: [0.02,0.02],
+      // 下边界，上边界的间距，总高度按1计算
       axisLabel:{
           show: true,
           position: "right",
@@ -125,6 +140,7 @@ html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。
               size: 12
           }
       },
+      // 坐标轴标签
       axisLine: {
           show: true,
           onZero: true,
@@ -135,6 +151,7 @@ html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。
               type: 'solid'
           }
       },
+      // 坐标轴样式
       splitLine: {
           show: true,
           count: 4,
@@ -145,8 +162,8 @@ html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。
               width: 1,
               type: 'solid'
           }
-      },
-      data: []
+      }
+      // 分界线样式
   },
   position: {
       x: 30,
@@ -154,21 +171,29 @@ html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。
       x2: 30,
       y2: 20
   },
+  // 图标相对左边(x)/右边(x2)/上边(y)/下边(y2)的距离
   font: {
       size: 12,
       family: "Times New Roman",
       weight: "normal"
   },
+  // 默认字体样式
   base:{
       upColor: "#c12e34",
+      // k线图涨的样式
       downColor: "#68a54a",
+      // k线图跌的样式
       backgroundColor: "#fff",
+      // 背景颜色
       color: "#000",
+      // 字体的颜色
       markStyle: {
           width: 2,
           color: "#48b"
       }
+      // 标记线的样式
   }
+  // 默认线条样式
 }
 ```
 ## 扩展
