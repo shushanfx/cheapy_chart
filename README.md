@@ -1,6 +1,6 @@
-# html_canvas
+# cheapy_chart
 ## Preview
-html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。   
+cheapy_chart 使用canvas绘制一些简单的图形：line，bar，k线图。   
 基于Zepto，使用方式如下：
 ```html
     <script src="js/zepto-1.1.4.min.js" type="text/javascript"></script>
@@ -196,7 +196,7 @@ html_canvas 使用canvas绘制一些简单的图形：line，bar，k线图。
   // 默认线条样式
 }
 ```
-## 扩展
+## 扩展，定义新的展现形式
 ```javascript
 CheapyChart.registerType(name, {
   render: function(){
