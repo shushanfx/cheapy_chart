@@ -447,7 +447,7 @@
                     me._stopTick();
                 }
                 else{
-                    me._nextTick(recursiveFunction, speed);
+                    this.ticker = me._nextTick(recursiveFunction, speed);
                 }
             },
             time, speed;
@@ -484,10 +484,10 @@
     CheapyChart.prototype._nextTick = function(callback, timeout){
         var method = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
         if(method){
-            method(callback);
+            return method(callback);
         }
         else{
-            setTimeout(method, timeout);
+            return setTimeout(callback, timeout);
         }
     };
     CheapyChart.prototype._bindEvent = function(){
@@ -495,11 +495,19 @@
         if(canvas){
             $(canvas).on("touchstart", function(e){
                 var pos = me.getPixFromEvent(e);
+                me.startPageX = e.touches[0].pageX;
+                me.startPageY = e.touches[0].pageY;
+                me.currentPageX = null;
+                me.currentPageY = null;
                 me._showToolTip(pos, e);
             }).on("touchmove", function(e){
                 var pos = me.getPixFromEvent(e);
+                me.currentPageX = e.touches[0].pageX;
+                me.currentPageY = e.touches[0].pageY;
                 me._showToolTip(pos, e);
             }).on("touchend", function(){
+                me._hideToolTip();
+            }).on("touchcancel", function(e){
                 me._hideToolTip();
             });
         }
@@ -526,7 +534,9 @@
         return [touch.clientX - offset.left, touch.clientY - offset.top];
     };
     CheapyChart.prototype._clear = function(){
+        this.tickList.length = 0;
         this.tickList = [];
+        this._stopTick();
         this._cleanRect(0, 0, this.width, this.height);
     };
     CheapyChart.prototype._cleanRect = function(x, y, w, h){
@@ -651,11 +661,24 @@
             $tooltip = $el.children(".tooltip"),
             $toolline = $el.children(".toolline"),
             tooltip = this.options.tooltip,
-            arr = null, isTarget = false;
+            arr = null, isTarget = false, me = this;
         var options = this.options,
             h = this.height,
             y = options.position.y,
             y2 = options.position.y2;
+
+        var calcDelta = function(){
+            if(me.startPageX > 0 && me.currentPageX > 0){
+                var deltaX = Math.abs(me.startPageX - me.currentPageX);
+                var deltaY = Math.abs(me.startPageY - me.currentPageY);
+                if(deltaY > deltaX){
+                    return false;
+                }
+                return true;
+            }
+            return false;
+        };
+
         if(tooltip && tooltip.show){
             if($tooltip.length === 0){
                 $tooltip = $('<div class="tooltip" style="position:absolute;left: 0px; top:0px;"></div>');
@@ -691,11 +714,8 @@
                 "border-right-color" : tooltip.lineStyle.color,
                 "border-right-width" : tooltip.lineStyle.width + "px"
             }).show();
-//            this.renderAgain(function(){
-//                me._drawLine(arr[0].pos[0], y, arr[0].pos[0], h -  y2, tooltip.lineStyle);
-//            });
 
-            e && e.preventDefault();
+            calcDelta() && e && e.preventDefault();
         }
         else{
             $tooltip.hide();
