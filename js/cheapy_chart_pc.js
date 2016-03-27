@@ -189,7 +189,8 @@
     CheapyChart.prototype.initCanvas = function(){
         var width = this.width,
             height = this.height,
-            $el = $(this.el);
+            $el = $(this.el),
+            $tooltip = null;
         var html = [];
         html.push('<canvas width="', width * 2, '" height="', height * 2, '" style="width:');
         html.push(width, 'px;height:', height, 'px;"></canvas>');
@@ -197,6 +198,10 @@
         this.canvas = $el.children("canvas").get(0);
         this.context = this.canvas.getContext("2d");
         this.context.scale(2, 2);
+        $tooltip = $('<div class="tooltip" style="position:absolute;left: 0px; top:0px;"></div>');
+        $el.append($tooltip);
+        this.$tooltip = $tooltip;
+        this.$canvas = $(this.canvas);
     };
     CheapyChart.prototype.initSeries = function(){
         var list = this.options.series;
@@ -522,10 +527,17 @@
         }
     };
     CheapyChart.prototype._bindEvent = function(){
-        var canvas = this.canvas, me = this;
+        var canvas = this.canvas,
+            me = this,
+            hideTimer = null,
+            hideDelay = me.options.tooltip.delay || 500;
         if(canvas){
             $(canvas).on("mousein", function(e){
                 var pos = me.getPixFromEvent(e);
+                if(hideTimer){
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
                 me.startPageX = e.pageX;
                 me.startPageY = e.pageY;
                 me.currentPageX = null;
@@ -533,16 +545,50 @@
                 me._showToolTip(pos, e);
             }).on("mousemove", function(e){
                 var pos = me.getPixFromEvent(e);
+                if(hideTimer){
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
                 me.currentPageX = e.pageX;
                 me.currentPageY = e.pageY;
                 me._showToolTip(pos, e);
             }).on("touchcancel", function(e){
-                me._hideToolTip();
+                if(hideTimer){
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+                hideTimer = setTimeout(function(){
+                    me._hideToolTip();
+                }, hideDelay);
             });
             $(me.el).on("mouseout", function(){
-                console.info("mouseout");
-                me._hideToolTip();
-            })
+                if(hideTimer){
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+                hideTimer = setTimeout(function(){
+                    me._hideToolTip();
+                }, hideDelay)
+            });
+            me.$tooltip.on("mousein", function(){
+                if(hideTimer){
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+            }).on("mouseover", function(){
+                if(hideTimer){
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+            }).on("mouseout", function(){
+                if(hideTimer){
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+                hideTimer = setTimeout(function(){
+                    me._hideToolTip();
+                }, hideDelay);
+            });
         }
     };
     CheapyChart.prototype.getPixFromValue = function(index, value){
@@ -726,12 +772,6 @@
         };
 
         if(tooltip && tooltip.show){
-            if($tooltip.length === 0){
-                $tooltip = $('<div class="tooltip" style="position:absolute;left: 0px; top:0px;"></div>');
-                $el.append($tooltip);
-                //$toolline = $('<div class="toolline" style="border: none; border-right: solid red 1px;position: absolute; left:0px; top: ' + y + 'px; height: ' + (h - y - y2) + 'px; display:block;background-color:none;"></div>');
-                //$el.append($toolline);
-            }
             arr = [];
             $.each(this.options.series, function(index, item){
                 if(item.instance){
@@ -749,6 +789,7 @@
             if(isTarget){
                 var tempBoolean = isSamePosition(arr[0].pos);
                 if(tempBoolean){
+                    $tooltip.show();
                     return true;
                 }
                 var str = tooltip.formatter.call($tooltip.get(0), arr);
@@ -832,9 +873,9 @@
             else{
                 xIndex = (x - chart.xLineStart) / (chart.xLineEnd - chart.xLineStart) * count;
             }
+            xIndex = Math.round(xIndex);
 
             if(xIndex >= 0 && xIndex < count + 1){
-                xIndex = Math.round(xIndex);
                 value = this.options.data[xIndex];
                 if(typeof(value)!=="undefined"){
                     return {

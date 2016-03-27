@@ -7,7 +7,7 @@
     <script src="../js/cheapy_chart_pc.js"></script>
 </head>
 <body>
-<div id="container" style="position: relative;height: 300px; width: 400px;cursor: pointer"></div>
+<div id="container" style="position: relative;height: 300px; width: 400px;cursor: pointer; margin-left: 100px; margin-top: 100px;"></div>
 <script type="text/javascript">
     $(function(){
         var chart = new CheapyChart({
@@ -16,9 +16,6 @@
                 enable: true,
                 timeout: 2000
             },
-            title: {
-                name: "Cheapy"
-            },
             legend: {
                 show: true
             },
@@ -26,13 +23,16 @@
                 show: true,
                 formatter: function(arr){
                     var html = [];
-
-                    html.push("<div style='height: 100px; width: 200px; color: white; background-color: red'>Hello World</div>");
-
+                    html.push("<div style='color: white; background-color: red; padding-left: 10px; padding-right: 10px; width: 150px;white-space: nowrap; border-top-left-radius: 5px; border-top-right-radius: 5px;'>Label: ", arr[0].name ,"</div>");
+                    html.push("<div style='color: white; background-color: red; padding-left: 10px; padding-right: 10px; width: 150px;white-space: nowrap; border-bottom-left-radius: 5px; border-bottom-right-radius: 5px;'>Value: ", arr[0].value ,"</div>");
+                    html.push("<div style='height:8px; text-align: center; margin-top: -9px; color: red; text-shadow: 5px 0 5px red;'>v</div>");
                     return html.join("");
                 },
                 position: function(arr){
-                    return [arr[0] + 10, arr[1] - 30];
+                    var w = $(this).width();
+                    var h = $(this).height();
+                    var left = arr[0] - w / 2;
+                    return [left, arr[1] - h - 20];
                 }
             },
             yAxis: {
@@ -42,8 +42,7 @@
                     onZero: true
                 },
                 axisLine: {
-                    maxValue: 100,
-                    minValue: -1,
+                    minValue: 0,
                     position: "both"
                 },
                 axisLabel: {
